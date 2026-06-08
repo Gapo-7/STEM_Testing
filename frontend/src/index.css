@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --border:   #21262d;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --accent:   #22d3ee;
+  }
+  .light {
+    --bg:       #f0f4f8;
+    --surface:  #ffffff;
+    --border:   #d0d7de;
+    --text:     #1c2128;
+    --muted:    #57606a;
+    --accent:   #0891b2;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    transition: background-color 0.2s, color 0.2s;
+  }
+  h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
+  * { box-sizing: border-box; }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+  }
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-150
+           bg-cyan-500 text-white hover:bg-cyan-400 active:scale-95;
+  }
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-150
+           hover:bg-white/10 active:scale-95;
+  }
+  .input-field {
+    @apply w-full px-3 py-2 rounded-lg text-sm outline-none transition-all;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .input-field:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+  .input-field::placeholder { color: var(--muted); }
+  .label { @apply block text-xs font-medium mb-1; color: var(--muted); }
+}
