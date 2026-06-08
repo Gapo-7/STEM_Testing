@@ -48,6 +48,29 @@ export default function DocumentsPanel({ deptId, recordId, documents = [], onUpd
     setDeleting(null)
   }
 
+  const handleDownload = async (doc) => {
+    try {
+      const response = await downloadDocument(deptId, recordId, doc.id)
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' })
+      const url = window.URL.createObjectURL(blob)
+      const disposition = response.headers['content-disposition'] || ''
+      const fileNameMatch = disposition.match(/filename\*?=([^;]+)/i)
+      let fileName = doc.name || 'download'
+      if (fileNameMatch) {
+        fileName = fileNameMatch[1].trim().replace(/\"/g, '')
+      }
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка скачивания. Пожалуйста, войдите заново и повторите.')
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Заголовок */}
@@ -163,14 +186,13 @@ export default function DocumentsPanel({ deptId, recordId, documents = [], onUpd
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <a
-                  href={downloadDocument(deptId, recordId, doc.id)}
-                  download
+                <button
+                  onClick={() => handleDownload(doc)}
                   className="p-1.5 rounded hover:bg-cyan-500/15 transition-all"
                   title="Скачать"
                 >
                   <Download size={16} className="text-cyan-400" />
-                </a>
+                </button>
                 <button
                   onClick={() => handleDelete(doc.id)}
                   disabled={deleting === doc.id}

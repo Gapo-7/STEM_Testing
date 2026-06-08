@@ -214,8 +214,8 @@ func DownloadDocument(c *gin.Context) {
 		return
 	}
 
-	// Отправляем файл
-	c.File(document.FilePath)
+	// Отправляем файл как вложение
+	c.FileAttachment(document.FilePath, filepath.Base(document.FilePath))
 }
 
 // DELETE /api/departments/:id/records/:rid/documents/:docid
