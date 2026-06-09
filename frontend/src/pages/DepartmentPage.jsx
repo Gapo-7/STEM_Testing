@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Search, User, Phone, Mail, Pencil, Trash2, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Plus, Search, User, Phone, Mail, Pencil, Trash2, AlertCircle, Trophy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 
@@ -75,7 +75,10 @@ export default function DepartmentPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(rec => (
+          {filtered.map((rec, index) => {
+            const rating = Number(rec.kpi?.overall_rating || 0)
+            const rank = index + 1
+            return (
             <div key={rec.id} className="card p-4 flex items-center gap-4 hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => navigate(`/departments/${id}/records/${rec.id}`)}>
               <div className="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 font-semibold text-sm font-display flex-shrink-0">
                 {rec.last_name?.[0]}{rec.first_name?.[0]}
@@ -91,6 +94,12 @@ export default function DepartmentPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 flex items-center gap-1 font-medium">
+                  <Trophy size={11} /> #{rank}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-medium">
+                  KPI {rec.kpi?.period ? rating.toFixed(1) : '—'}
+                </span>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[rec.status]}`}>
                   {statusLabel[rec.status]}
                 </span>
@@ -111,7 +120,8 @@ export default function DepartmentPage() {
                 )}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

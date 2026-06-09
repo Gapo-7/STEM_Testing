@@ -55,6 +55,7 @@ func GetRecords(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка декодирования"})
 		return
 	}
+	records = ApplyKPIToRecords(ctx, deptID, records)
 
 	c.JSON(http.StatusOK, records)
 }
@@ -88,6 +89,11 @@ func GetRecord(c *gin.Context) {
 	}).Decode(&record); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Запись не найдена"})
 		return
+	}
+	if overviews, err := loadLatestKPIOverviews(ctx, deptID, []models.EmployeeRecord{record}); err == nil {
+		if summary, ok := overviews[record.ID.Hex()]; ok {
+			record.KPI = &summary
+		}
 	}
 
 	c.JSON(http.StatusOK, record)

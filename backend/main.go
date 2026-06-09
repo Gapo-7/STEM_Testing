@@ -16,7 +16,9 @@ func main() {
 	gin.SetMode(config.App.GinMode)
 
 	database.Connect()
+	database.ConnectSQL()
 	defer database.Disconnect()
+	defer database.DisconnectSQL()
 
 	// Сид начальных данных при первом запуске
 	handlers.SeedDatabase()
@@ -79,6 +81,8 @@ func main() {
 			depts.GET("/:id/records/:rid", handlers.GetRecord)
 			depts.PUT("/:id/records/:rid", handlers.UpdateRecord)
 			depts.DELETE("/:id/records/:rid", handlers.DeleteRecord)
+			depts.GET("/:id/records/:rid/kpi", handlers.GetRecordKPI)
+			depts.PUT("/:id/records/:rid/kpi", handlers.UpsertRecordKPI)
 
 			// Документы сотрудника (загрузка, скачивание, удаление)
 			depts.POST("/:id/records/:rid/upload", handlers.UploadDocument)

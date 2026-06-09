@@ -8,9 +8,9 @@ import (
 
 // Статусы сотрудника
 const (
-	StatusActive   = "active"    // Работает
-	StatusInactive = "inactive"  // Уволен
-	StatusOnLeave  = "on_leave"  // В отпуске/декрете
+	StatusActive   = "active"   // Работает
+	StatusInactive = "inactive" // Уволен
+	StatusOnLeave  = "on_leave" // В отпуске/декрете
 )
 
 // DocumentMeta хранит метаданные документа с информацией о файле.
@@ -27,14 +27,14 @@ type DocumentMeta struct {
 // EmployeeRecord — основная запись о сотруднике в отделе.
 // Содержит личную информацию и список документов (пока только названия).
 type EmployeeRecord struct {
-	ID           primitive.ObjectID  `bson:"_id,omitempty"          json:"id"`
-	DepartmentID primitive.ObjectID  `bson:"department_id"          json:"department_id"`
+	ID           primitive.ObjectID `bson:"_id,omitempty"          json:"id"`
+	DepartmentID primitive.ObjectID `bson:"department_id"          json:"department_id"`
 
 	// --- Персональные данные ---
 	LastName   string `bson:"last_name"   json:"last_name"`   // Фамилия
 	FirstName  string `bson:"first_name"  json:"first_name"`  // Имя
 	MiddleName string `bson:"middle_name" json:"middle_name"` // Отчество / Патроним
-	
+
 	// --- Должность и контакты ---
 	Position string `bson:"position" json:"position"` // Должность
 	Phone    string `bson:"phone"    json:"phone"`    // Телефон
@@ -54,6 +54,9 @@ type EmployeeRecord struct {
 
 	// --- Дополнительно ---
 	Notes string `bson:"notes" json:"notes"` // Произвольные заметки
+
+	// --- KPI summary ---
+	KPI *EmployeeKPISummary `bson:"-" json:"kpi,omitempty"`
 
 	// --- Метаданные записи ---
 	CreatedBy primitive.ObjectID `bson:"created_by" json:"created_by"`

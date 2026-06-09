@@ -11,6 +11,7 @@ import DepartmentsListPage from './pages/DepartmentsListPage'
 import AdminDepartmentsPage from './pages/AdminDepartmentsPage'
 import RecordFormPage from './pages/RecordFormPage'
 import RecordPage from './pages/RecordPage'
+import EmployeeKPIPage from './pages/EmployeeKPIPage'
 import UsersAdminPage from './pages/UsersAdminPage'
 
 // Layout с боковой панелью для защищённых страниц
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/departments/:id" element={<DepartmentPage />} />
               <Route path="/departments/:id/records/new" element={<RecordFormPage />} />
                 <Route path="/departments/:id/records/:rid" element={<RecordPage />} />
+              <Route path="/departments/:id/records/:rid/kpi" element={<EmployeeKPIPage />} />
               <Route path="/departments/:id/records/:rid/edit" element={<RecordFormPage />} />
 
               {/* Только директор */}

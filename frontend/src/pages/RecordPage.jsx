@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Phone, Mail, Calendar } from 'lucide-react'
+import { ArrowLeft, BarChart3, Phone, Mail, Calendar } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import DocumentsPanel from '../components/DocumentsPanel'
@@ -45,7 +45,8 @@ export default function RecordPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       {/* Заголовок */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
         <button onClick={() => navigate(`/departments/${id}`)} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
           <ArrowLeft size={18} />
         </button>
@@ -54,9 +55,17 @@ export default function RecordPage() {
             {record.last_name} {record.first_name} {record.middle_name}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{record.position}</p>
+            {record.kpi && (
+              <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--muted)' }}>
+                <BarChart3 size={12} /> Рейтинг: {Number(record.kpi.overall_rating || 0).toFixed(1)}
+              </p>
+            )}
         </div>
       </div>
-
+        <button onClick={() => navigate(`/departments/${id}/records/${rid}/kpi`)} className="btn-primary flex items-center gap-2">
+          <BarChart3 size={16} /> Смотреть KPI
+        </button>
+      </div>
       {/* Основная информация */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="card p-4 space-y-3">
