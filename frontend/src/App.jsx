@@ -11,7 +11,7 @@ import DepartmentsListPage from './pages/DepartmentsListPage'
 import AdminDepartmentsPage from './pages/AdminDepartmentsPage'
 import RecordFormPage from './pages/RecordFormPage'
 import RecordPage from './pages/RecordPage'
-import EmployeeKPIPage from './pages/EmployeeKPIPage'
+import {EmployeeKPIPage} from './pages/EmployeeKPIPage'
 import UsersAdminPage from './pages/UsersAdminPage'
 
 // Layout с боковой панелью для защищённых страниц

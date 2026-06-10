@@ -9,15 +9,15 @@ const currentMonth = () => new Date().toISOString().slice(0, 7)
 const baseForm = period => ({
 	period,
 	contract_type: 'ТД',
-	lateness_minutes: 0,
+	lateness_minutes: '0',
 	vacation: '',
-	sick_leave_days: 0,
+	sick_leave_days: '0',
 	training: '',
 	overall_rating: 0,
 	tasks: [],
 })
 
-export default function EmployeeKPIPage() {
+export function EmployeeKPIPage() {
 	const { id, rid } = useParams()
 	const navigate = useNavigate()
 	const { user } = useAuth()
@@ -34,7 +34,6 @@ export default function EmployeeKPIPage() {
 
 	const canWrite = user?.role === 'director' || user?.role === 'managing_director' || user?.role === 'department_head'
 
-	// Если бэкенд прислал пустой массив компонентов, подставляем дефолтный
 	const componentDefs = useMemo(() => {
 		const backDefs = payload?.department?.components || []
 		return backDefs.length > 0
@@ -42,12 +41,18 @@ export default function EmployeeKPIPage() {
 			: [{ key: 'default_metric', label: 'Выполнение планов / Результат' }]
 	}, [payload])
 
-	const loadKPI = async (period) => {
-		setLoading(true)
+	const loadKPI = async (period, silent = false) => {
+		if (!silent) {
+			setLoading(true)
+		}
+
 		setError('')
+
 		try {
 			const { data } = await fetchEmployeeKPI(id, rid, period)
+
 			setPayload(data)
+
 			const latestPeriod = data.available_periods?.[data.available_periods.length - 1]
 			const fallbackPeriod = period || data.current?.period || latestPeriod || currentMonth()
 			const selected = data.current && data.current.period === fallbackPeriod ? data.current : null
@@ -57,44 +62,64 @@ export default function EmployeeKPIPage() {
 				? currentComponentDefs
 				: [{ key: 'default_metric', label: 'Выполнение планов / Результат' }]
 
-			// Восстанавливаем задачи из базы
 			const loadedTasks = (selected?.tasks || []).map(task => {
 				const metrics = {}
+
 				effComponents.forEach(c => {
 					const existing = task.metrics?.[c.key] || {}
+
 					metrics[c.key] = {
-						plan: existing.plan ?? 0,
-						fact: existing.fact ?? 0
+						plan: existing.plan !== undefined ? String(existing.plan) : '0',
+						fact: existing.fact !== undefined ? String(existing.fact) : '0'
 					}
 				})
-				return { id: task.id || crypto.randomUUID(), title: task.title || '', metrics }
+
+				return {
+					id: task.id || crypto.randomUUID(),
+					title: task.title || '',
+					metrics
+				}
 			})
 
-			if (data.history && data.history.length > 0) {
-				const sorted = [...data.history].sort((a, b) => a.period.localeCompare(b.period))
-				if (!historyStart) setHistoryStart(sorted[0].period)
-				if (!historyEnd) setHistoryEnd(sorted[sorted.length - 1].period)
-			}
 
-			setPeriodInput(fallbackPeriod)
 			setForm({
 				period: fallbackPeriod,
 				contract_type: selected?.contract_type || 'ТД',
-				lateness_minutes: selected?.lateness_minutes ?? 0,
+
+				lateness_minutes:
+					selected?.lateness_minutes !== null &&
+					selected?.lateness_minutes !== undefined
+						? String(selected.lateness_minutes)
+						: form.lateness_minutes || '0',
+
 				vacation: selected?.vacation || '',
-				sick_leave_days: selected?.sick_leave_days ?? 0,
+
+				sick_leave_days:
+					selected?.sick_leave_days !== null &&
+					selected?.sick_leave_days !== undefined
+						? String(selected.sick_leave_days)
+						: form.sick_leave_days || '0',
+
 				training: selected?.training || '',
-				overall_rating: selected?.overall_rating ?? 0,
+				overall_rating: selected?.overall_rating || 0,
 				tasks: loadedTasks,
 			})
+
 		} catch (e) {
+
 			if (e.response?.status === 403) {
 				navigate('/dashboard')
 				return
 			}
+
 			setError(e.response?.data?.error || 'Ошибка загрузки KPI')
+
 		} finally {
-			setLoading(false)
+
+			if (!silent) {
+				setLoading(false)
+			}
+
 		}
 	}
 
@@ -102,7 +127,6 @@ export default function EmployeeKPIPage() {
 		loadKPI()
 	}, [id, rid])
 
-	// Расчет текущего рейтинга
 	const computedRating = useMemo(() => {
 		let baseScore = 100
 		const tasks = form.tasks || []
@@ -118,7 +142,9 @@ export default function EmployeeKPIPage() {
 					let validMetricsCount = 0
 
 					compKeys.forEach(key => {
-						const { plan, fact } = task.metrics[key]
+						const plan = Number(task.metrics[key]?.plan) || 0
+						const fact = Number(task.metrics[key]?.fact) || 0
+
 						if (plan > 0) {
 							taskTotalPercentage += (fact / plan) * 100
 							validMetricsCount++
@@ -140,7 +166,8 @@ export default function EmployeeKPIPage() {
 			}
 		}
 
-		const latenessPenalty = (Number(form.lateness_minutes) || 0) * 0.5
+		const latenessMinutes = Number(form.lateness_minutes) || 0
+		const latenessPenalty = latenessMinutes * 0.5
 		const finalRating = Math.max(0, baseScore - latenessPenalty)
 		return Math.min(100, finalRating)
 	}, [form.tasks, form.lateness_minutes])
@@ -170,7 +197,7 @@ export default function EmployeeKPIPage() {
 	const addTask = () => {
 		const newTask = { id: crypto.randomUUID(), title: '', metrics: {} }
 		componentDefs.forEach(c => {
-			newTask.metrics[c.key] = { plan: 0, fact: 0 }
+			newTask.metrics[c.key] = { plan: '0', fact: '0' }
 		})
 		setForm(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }))
 	}
@@ -195,7 +222,7 @@ export default function EmployeeKPIPage() {
 					...t.metrics,
 					[key]: {
 						...t.metrics[key],
-						[subField]: value === '' ? 0 : Number(value)
+						[subField]: value
 					}
 				}
 			} : t)
@@ -207,14 +234,49 @@ export default function EmployeeKPIPage() {
 		setSaving(true)
 		setError('')
 		try {
-			const payloadToSave = { ...form, overall_rating: computedRating }
+			const payloadToSave = {
+				...form,
+				lateness_minutes: form.lateness_minutes === '' ? 0 : Number(form.lateness_minutes),
+				sick_leave_days: form.sick_leave_days === '' ? 0 : Number(form.sick_leave_days),
+				overall_rating: computedRating,
+				tasks: form.tasks.map(t => ({
+					...t,
+					metrics: Object.fromEntries(
+						Object.entries(t.metrics || {}).map(([k, v]) => [
+							k,
+							{
+								plan: v?.plan === '' ? 0 : Number(v?.plan || 0),
+								fact: v?.fact === '' ? 0 : Number(v?.fact || 0)
+							}
+						])
+					)
+				}))
+			}
 			await saveEmployeeKPI(id, rid, payloadToSave)
-			await loadKPI(form.period)
+			setForm(prev => ({
+				...prev,
+				...payloadToSave
+			}))
+			await loadKPI(form.period, true)
+
 		} catch (e) {
 			setError(e.response?.data?.error || 'Ошибка сохранения KPI')
 		} finally {
 			setSaving(false)
 		}
+	}
+
+	if (loading) {
+		return <div className="p-6 flex items-center justify-center h-64"><span className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" /></div>
+	}
+
+	if (!payload) {
+		return (
+			<div className="p-6 max-w-2xl mx-auto text-center space-y-3">
+				<p style={{ color: 'var(--text)' }} className="font-medium">Не удалось открыть KPI</p>
+				<p style={{ color: 'var(--muted)' }}>{error || 'KPI не найден'}</p>
+			</div>
+		)
 	}
 
 	const employee = payload?.employee
@@ -226,24 +288,26 @@ export default function EmployeeKPIPage() {
 			{/* Верхняя панель */}
 			<div className="flex items-center justify-between gap-4 mb-6">
 				<div className="flex items-center gap-3">
-					<button onClick={() => navigate(`/departments/${id}/records/${rid}`)} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
-						<ArrowLeft size={18} />
+					<button onClick={() => navigate(`/departments/${id}/records/${rid}`)}
+					        className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
+						<ArrowLeft size={18}/>
 					</button>
 					<div>
 						<h1 className="text-2xl font-bold font-display" style={{ color: 'var(--text)' }}>
 							KPI: {employee?.last_name} {employee?.first_name} {employee?.middle_name}
 						</h1>
-						<p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{payload?.department?.title || 'KPI отдела'}</p>
+						<p className="text-sm mt-1"
+						   style={{ color: 'var(--muted)' }}>{payload?.department?.title || 'KPI отдела'}</p>
 					</div>
 				</div>
 				<div className="flex items-center gap-3">
 					<div className="card px-4 py-3 flex items-center gap-3">
-						<BarChart3 size={18} className={ratingColor} />
+						<BarChart3 size={18} className={ratingColor}/>
 						<div>
 							<p className={`text-xl font-bold font-display ${ratingColor}`}>{overallRating.toFixed(1)}%</p>
 							<p className="text-xs" style={{ color: 'var(--muted)' }}>Общий рейтинг</p>
 							<p className={`text-xs mt-1 flex items-center gap-1 ${overallDelta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-								{overallDelta >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+								{overallDelta >= 0 ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
 								<span>{overallDelta >= 0 ? '+' : ''}{overallDelta.toFixed(1)}% к прошлому периоду</span>
 							</p>
 						</div>
@@ -259,27 +323,47 @@ export default function EmployeeKPIPage() {
 						<div className="grid grid-cols-2 gap-4">
 							<div>
 								<label className="label">Период</label>
-								<input type="month" className="input-field" value={form.period} onChange={e => setField('period', e.target.value)} disabled={!canWrite} />
+								<input type="month" className="input-field" value={form.period}
+								       onChange={e => setField('period', e.target.value)} disabled={!canWrite}/>
 							</div>
 							<div>
 								<label className="label">Тип договора</label>
-								<input className="input-field" value={form.contract_type} onChange={e => setField('contract_type', e.target.value)} disabled={!canWrite} />
+								<input className="input-field" value={form.contract_type}
+								       onChange={e => setField('contract_type', e.target.value)} disabled={!canWrite}/>
 							</div>
 							<div>
 								<label className="label">Опоздание, мин</label>
-								<input type="number" min="0" className="input-field border-amber-500/30" value={form.lateness_minutes} onChange={e => setField('lateness_minutes', Number(e.target.value))} disabled={!canWrite} />
+								<input
+									type="number"
+									min="0"
+									className="input-field border-amber-500/30"
+									value={form.lateness_minutes ?? '0'}
+									onFocus={(e) => e.target.select()}
+									onChange={e => setField('lateness_minutes', e.target.value)}
+									disabled={!canWrite}
+								/>
 							</div>
 							<div>
 								<label className="label">Больничные, дни</label>
-								<input type="number" min="0" className="input-field" value={form.sick_leave_days} onChange={e => setField('sick_leave_days', Number(e.target.value))} disabled={!canWrite} />
+								<input
+									type="number"
+									min="0"
+									className="input-field"
+									value={form.sick_leave_days ?? '0'}
+									onFocus={(e) => e.target.select()}
+									onChange={e => setField('sick_leave_days', e.target.value)}
+									disabled={!canWrite}
+								/>
 							</div>
 							<div className="col-span-2">
 								<label className="label">Отпуск</label>
-								<input className="input-field" value={form.vacation} onChange={e => setField('vacation', e.target.value)} disabled={!canWrite} />
+								<input className="input-field" value={form.vacation}
+								       onChange={e => setField('vacation', e.target.value)} disabled={!canWrite}/>
 							</div>
 							<div className="col-span-2">
 								<label className="label">Обучение</label>
-								<textarea className="input-field resize-none" rows={2} value={form.training} onChange={e => setField('training', e.target.value)} disabled={!canWrite} />
+								<textarea className="input-field resize-none" rows={2} value={form.training}
+								          onChange={e => setField('training', e.target.value)} disabled={!canWrite}/>
 							</div>
 						</div>
 					</div>
@@ -289,8 +373,11 @@ export default function EmployeeKPIPage() {
 						<div className="flex items-center justify-between">
 							<h2 className="font-semibold font-display" style={{ color: 'var(--text)' }}>Аналитика истории</h2>
 							<div className="flex items-center gap-1">
-								<input type="month" className="input-field w-24 px-2 py-0.5 text-xs" value={periodInput} onChange={e => setPeriodInput(e.target.value)} />
-								<button type="button" onClick={() => loadKPI(periodInput)} className="btn-ghost text-xs px-2" style={{ color: 'var(--accent)' }}>Перейти</button>
+								<input type="month" className="input-field w-24 px-2 py-0.5 text-xs" value={periodInput}
+								       onChange={e => setPeriodInput(e.target.value)}/>
+								<button type="button" onClick={() => loadKPI(periodInput)}
+								        className="btn-ghost text-xs px-2" style={{ color: 'var(--accent)' }}>Перейти
+								</button>
 							</div>
 						</div>
 
@@ -299,11 +386,13 @@ export default function EmployeeKPIPage() {
 							<div className="grid grid-cols-2 gap-2">
 								<div>
 									<span className="text-[10px] text-slate-400 block mb-1">С месяца:</span>
-									<input type="month" className="input-field text-xs py-1" value={historyStart} onChange={e => setHistoryStart(e.target.value)} />
+									<input type="month" className="input-field text-xs py-1" value={historyStart}
+									       onChange={e => setHistoryStart(e.target.value)}/>
 								</div>
 								<div>
 									<span className="text-[10px] text-slate-400 block mb-1">По месяц:</span>
-									<input type="month" className="input-field text-xs py-1" value={historyEnd} onChange={e => setHistoryEnd(e.target.value)} />
+									<input type="month" className="input-field text-xs py-1" value={historyEnd}
+									       onChange={e => setHistoryEnd(e.target.value)}/>
 								</div>
 							</div>
 							<div className="border-t border-white/5 pt-2 flex justify-between items-center">
@@ -320,16 +409,20 @@ export default function EmployeeKPIPage() {
 								history.map(item => {
 									const isExpanded = expandedPeriod === item.period
 									return (
-										<div key={item.period} className="border border-white/5 rounded-xl bg-white/5 overflow-hidden">
+										<div key={item.period}
+										     className="border border-white/5 rounded-xl bg-white/5 overflow-hidden">
 											<button
 												type="button"
 												onClick={() => setExpandedPeriod(isExpanded ? null : item.period)}
 												className="w-full flex justify-between items-center p-3 text-sm hover:bg-white/5 transition-colors"
 											>
-												<span className="font-medium" style={{ color: 'var(--text)' }}>{item.period}</span>
+                                     <span className="font-medium"
+                                           style={{ color: 'var(--text)' }}>{item.period}</span>
 												<div className="flex items-center gap-2">
-													<span className="font-bold text-slate-300">{Number(item.overall_rating || 0).toFixed(1)}%</span>
-													{isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                                        <span
+											className="font-bold text-slate-300">{Number(item.overall_rating || 0).toFixed(1)}%</span>
+													{isExpanded ? <ChevronUp size={14} className="text-slate-400"/> :
+														<ChevronDown size={14} className="text-slate-400"/>}
 												</div>
 											</button>
 
@@ -344,7 +437,8 @@ export default function EmployeeKPIPage() {
 													) : (
 														<div className="space-y-2">
 															{item.tasks.map((t, tIdx) => (
-																<div key={t.id || tIdx} className="bg-white/5 p-2 rounded-lg space-y-1">
+																<div key={t.id || tIdx}
+																     className="bg-white/5 p-2 rounded-lg space-y-1">
 																	<p className="font-medium text-slate-200">{t.title || 'Без названия'}</p>
 																	<div className="grid grid-cols-1 gap-1 pl-2 border-l border-cyan-500/30 text-[11px]">
 																		{Object.keys(t.metrics || {}).map(mKey => {
@@ -382,8 +476,9 @@ export default function EmployeeKPIPage() {
 								<p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>Показатели рассчитываются для каждой задачи отдельно</p>
 							</div>
 							{canWrite && (
-								<button type="button" onClick={addTask} className="btn-ghost flex items-center gap-2 text-sm bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg">
-									<Plus size={16} /> Добавить задачу
+								<button type="button" onClick={addTask}
+								        className="btn-ghost flex items-center gap-2 text-sm bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 px-3 py-1.5 rounded-lg">
+									<Plus size={16}/> Добавить задачу
 								</button>
 							)}
 						</div>
@@ -398,10 +493,16 @@ export default function EmployeeKPIPage() {
 									{form.tasks.map((task, index) => {
 										let taskTotal = 0
 										let taskCount = 0
-										Object.keys(task.metrics).forEach(k => {
-											const { plan, fact } = task.metrics[k]
-											if (plan > 0) { taskTotal += (fact / plan) * 100; taskCount++ }
-											else if (fact > 0 && plan === 0) { taskTotal += 100; taskCount++ }
+										Object.keys(task.metrics || {}).forEach(k => {
+											const plan = Number(task.metrics[k]?.plan) || 0
+											const fact = Number(task.metrics[k]?.fact) || 0
+											if (plan > 0) {
+												taskTotal += (fact / plan) * 100
+												taskCount++
+											} else if (fact > 0 && plan === 0) {
+												taskTotal += 100
+												taskCount++
+											}
 										})
 										const taskPercent = taskCount > 0 ? (taskTotal / taskCount) : 0
 
@@ -421,29 +522,45 @@ export default function EmployeeKPIPage() {
 													</div>
 													<div className="flex flex-col items-end gap-2">
 														{canWrite && (
-															<button type="button" onClick={() => removeTask(task.id)} className="text-red-400 hover:text-red-300 p-1">
-																<Trash2 size={16} />
+															<button type="button" onClick={() => removeTask(task.id)}
+															        className="text-red-400 hover:text-red-300 p-1">
+																<Trash2 size={16}/>
 															</button>
 														)}
 														<span className="text-xs font-bold bg-white/10 px-2 py-1 rounded">Итог: {taskPercent.toFixed(1)}%</span>
 													</div>
 												</div>
 
-												{/* Поля План / Факт будут ВСЕГДА рендериться благодаря запасному массиву */}
 												<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
 													{componentDefs.map(component => {
-														const vals = task.metrics[component.key] || { plan: 0, fact: 0 }
+														const vals = task.metrics?.[component.key] || { plan: '0', fact: '0' }
 														return (
 															<div key={component.key} className="space-y-1 col-span-2 sm:col-span-1">
 																<label className="text-xs font-medium" style={{ color: 'var(--text)' }}>{component.label}</label>
 																<div className="flex items-center gap-2">
 																	<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
 																		<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">План</span>
-																		<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.plan} onChange={e => setTaskMetric(task.id, component.key, 'plan', e.target.value)} disabled={!canWrite} />
+																		<input
+																			type="number"
+																			step="0.1"
+																			className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none"
+																			value={vals.plan ?? '0'}
+																			onFocus={(e) => e.target.select()}
+																			onChange={e => setTaskMetric(task.id, component.key, 'plan', e.target.value)}
+																			disabled={!canWrite}
+																		/>
 																	</div>
 																	<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
 																		<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">Факт</span>
-																		<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.fact} onChange={e => setTaskMetric(task.id, component.key, 'fact', e.target.value)} disabled={!canWrite} />
+																		<input
+																			type="number"
+																			step="0.1"
+																			className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none"
+																			value={vals.fact ?? '0'}
+																			onFocus={(e) => e.target.select()}
+																			onChange={e => setTaskMetric(task.id, component.key, 'fact', e.target.value)}
+																			disabled={!canWrite}
+																		/>
 																	</div>
 																</div>
 															</div>
@@ -463,7 +580,7 @@ export default function EmployeeKPIPage() {
 								</div>
 								{canWrite && (
 									<button type="submit" disabled={saving} className="btn-primary flex items-center gap-2 px-6">
-										{saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+										{saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : <Save size={16}/>}
 										{saving ? 'Сохранение...' : 'Сохранить всё'}
 									</button>
 								)}
