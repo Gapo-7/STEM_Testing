@@ -89,69 +89,11 @@ type KPIUpsertRequest struct {
 
 // GetDepartmentKPIDefinition возвращает KPI-набор для отдела.
 func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
-	switch departmentCode {
-	case "projects":
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI проектного отдела",
-			Components: []KPIComponentDefinition{
-				{Key: "actual_delivery_time", Label: "Фактический срок реализации", Unit: "дн."},
-				{Key: "project_quality", Label: "Качество реализованного проекта"},
-				{Key: "project_control", Label: "Самостоятельное ведение и контроль проекта"},
-				{Key: "margin_plan", Label: "Выполнение плана маржи", Unit: "%"},
-				{Key: "completed_projects", Label: "Количество реализованных проектов", Unit: "шт."},
-			},
-		}
-	case "tenders":
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI отдела тендеров",
-			Components: []KPIComponentDefinition{
-				{Key: "won_total", Label: "Выиграно всего", Unit: "шт."},
-				{Key: "contract_sum", Label: "Сумма контрактов", Unit: "₸"},
-				{Key: "lost_total", Label: "Проиграно всего", Unit: "шт."},
-				{Key: "follow_up_quality", Label: "Отработка проектов", Description: "Звонки, жалобы, сопровождение и т.п."},
-			},
-		}
-	case "sa_projects":
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI отдела проектов SA",
-			Components: []KPIComponentDefinition{
-				{Key: "actual_delivery_time", Label: "Фактический срок реализации", Unit: "дн."},
-				{Key: "project_quality", Label: "Качество проекта"},
-				{Key: "project_control", Label: "Самостоятельное ведение и контроль"},
-				{Key: "completed_projects", Label: "Количество реализованных проектов", Unit: "шт."},
-			},
-		}
-	case "sa_sales":
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI коммерческого отдела SA",
-			Components: []KPIComponentDefinition{
-				{Key: "annual_sales", Label: "Сумма продаж за год", Unit: "₸"},
-				{Key: "annual_profit", Label: "Сумма прибыли за год", Unit: "₸"},
-				{Key: "engagement", Label: "Вовлеченность сотрудника"},
-				{Key: "presentations_quality", Label: "Презентации (качество)"},
-			},
-		}
-	case "designers":
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI дизайнеров",
-			Components: []KPIComponentDefinition{
-				{Key: "completed_projects", Label: "Выполнено проектов", Unit: "шт."},
-				{Key: "active_projects", Label: "Активных проектов", Unit: "шт."},
-				{Key: "closed_projects", Label: "Завершенных проектов", Unit: "шт."},
-				{Key: "overdue_projects", Label: "Проектов с просрочкой", Unit: "шт."},
-				{Key: "quality", Label: "Качество"},
-			},
-		}
-	default:
-		return DepartmentKPIDefinition{
-			DepartmentCode: departmentCode,
-			Title:          "KPI отдела",
-			Components:     []KPIComponentDefinition{}, // Пустой слайс, если у отдела нет кастомных метрик
-		}
+	// Убрали все case "projects":, case "tenders": и т.д.
+	// Теперь все отделы работают как HR — без готовых параметров
+	return DepartmentKPIDefinition{
+		DepartmentCode: departmentCode,
+		Title:          "KPI отдела",
+		Components:     []KPIComponentDefinition{},
 	}
 }
