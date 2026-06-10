@@ -28,13 +28,19 @@ export default function EmployeeKPIPage() {
 	const [saving, setSaving] = useState(false)
 	const [error, setError] = useState('')
 
-	// Новые стейты для кастомного фильтра истории и раскрытия деталей
 	const [historyStart, setHistoryStart] = useState('')
 	const [historyEnd, setHistoryEnd] = useState('')
 	const [expandedPeriod, setExpandedPeriod] = useState(null)
 
 	const canWrite = user?.role === 'director' || user?.role === 'managing_director' || user?.role === 'department_head'
-	const componentDefs = payload?.department?.components || []
+
+	// Если бэкенд прислал пустой массив компонентов, подставляем дефолтный
+	const componentDefs = useMemo(() => {
+		const backDefs = payload?.department?.components || []
+		return backDefs.length > 0
+			? backDefs
+			: [{ key: 'default_metric', label: 'Выполнение планов / Результат' }]
+	}, [payload])
 
 	const loadKPI = async (period) => {
 		setLoading(true)
@@ -47,10 +53,14 @@ export default function EmployeeKPIPage() {
 			const selected = data.current && data.current.period === fallbackPeriod ? data.current : null
 
 			const currentComponentDefs = data.department?.components || []
+			const effComponents = currentComponentDefs.length > 0
+				? currentComponentDefs
+				: [{ key: 'default_metric', label: 'Выполнение планов / Результат' }]
 
+			// Восстанавливаем задачи из базы
 			const loadedTasks = (selected?.tasks || []).map(task => {
 				const metrics = {}
-				currentComponentDefs.forEach(c => {
+				effComponents.forEach(c => {
 					const existing = task.metrics?.[c.key] || {}
 					metrics[c.key] = {
 						plan: existing.plan ?? 0,
@@ -60,7 +70,6 @@ export default function EmployeeKPIPage() {
 				return { id: task.id || crypto.randomUUID(), title: task.title || '', metrics }
 			})
 
-			// Задаем дефолтные диапазоны для фильтра истории, если они еще не стоят
 			if (data.history && data.history.length > 0) {
 				const sorted = [...data.history].sort((a, b) => a.period.localeCompare(b.period))
 				if (!historyStart) setHistoryStart(sorted[0].period)
@@ -144,7 +153,6 @@ export default function EmployeeKPIPage() {
 	const currentDisplayRating = currentHistory?.period === form.period ? computedRating : (currentHistory?.overall_rating ?? computedRating)
 	const overallDelta = previousHistory ? currentDisplayRating - previousHistory.overall_rating : 0
 
-	// Динамический расчет среднего KPI по выбранному пользователем диапазону дат
 	const customRangeAvg = useMemo(() => {
 		if (!history || history.length === 0) return 0
 		const filtered = history.filter(item => {
@@ -244,7 +252,7 @@ export default function EmployeeKPIPage() {
 			</div>
 
 			<div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1.8fr] gap-6">
-				{/* Левая колонка: Кадры и Детальная история */}
+				{/* Левая колонка */}
 				<div className="space-y-6">
 					<div className="card p-4">
 						<h2 className="font-semibold font-display mb-4" style={{ color: 'var(--text)' }}>Базовые показатели</h2>
@@ -276,7 +284,7 @@ export default function EmployeeKPIPage() {
 						</div>
 					</div>
 
-					{/* ПОЛНОСТЬЮ ПЕРЕРАБОТАННАЯ ИСТОРИЯ */}
+					{/* История */}
 					<div className="card p-4 space-y-4">
 						<div className="flex items-center justify-between">
 							<h2 className="font-semibold font-display" style={{ color: 'var(--text)' }}>Аналитика истории</h2>
@@ -286,7 +294,6 @@ export default function EmployeeKPIPage() {
 							</div>
 						</div>
 
-						{/* Блок ручного выбора диапазона дат */}
 						<div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-3">
 							<p className="text-xs font-medium text-slate-300">Выбор периода расчета:</p>
 							<div className="grid grid-cols-2 gap-2">
@@ -305,7 +312,6 @@ export default function EmployeeKPIPage() {
 							</div>
 						</div>
 
-						{/* Интерактивный список месяцев с раскрытием задач */}
 						<div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
 							<p className="text-xs font-semibold text-slate-400">Все сохраненные месяцы:</p>
 							{history.length === 0 ? (
@@ -367,7 +373,7 @@ export default function EmployeeKPIPage() {
 					</div>
 				</div>
 
-				{/* Правая колонка: Текущие Динамические задачи */}
+				{/* Правая колонка: Задачи текущего месяца */}
 				<div className="space-y-6">
 					<div className="card p-4">
 						<div className="flex items-center justify-between mb-4">
@@ -423,35 +429,33 @@ export default function EmployeeKPIPage() {
 													</div>
 												</div>
 
-												{componentDefs.length > 0 && (
-													<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
-														{componentDefs.map(component => {
-															const vals = task.metrics[component.key] || { plan: 0, fact: 0 }
-															return (
-																<div key={component.key} className="space-y-1">
-																	<label className="text-xs font-medium" style={{ color: 'var(--text)' }}>{component.label}</label>
-																	<div className="flex items-center gap-2">
-																		<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
-																			<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">План</span>
-																			<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.plan} onChange={e => setTaskMetric(task.id, component.key, 'plan', e.target.value)} disabled={!canWrite} />
-																		</div>
-																		<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
-																			<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">Факт</span>
-																			<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.fact} onChange={e => setTaskMetric(task.id, component.key, 'fact', e.target.value)} disabled={!canWrite} />
-																		</div>
+												{/* Поля План / Факт будут ВСЕГДА рендериться благодаря запасному массиву */}
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
+													{componentDefs.map(component => {
+														const vals = task.metrics[component.key] || { plan: 0, fact: 0 }
+														return (
+															<div key={component.key} className="space-y-1 col-span-2 sm:col-span-1">
+																<label className="text-xs font-medium" style={{ color: 'var(--text)' }}>{component.label}</label>
+																<div className="flex items-center gap-2">
+																	<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
+																		<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">План</span>
+																		<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.plan} onChange={e => setTaskMetric(task.id, component.key, 'plan', e.target.value)} disabled={!canWrite} />
+																	</div>
+																	<div className="flex-1 flex items-center border border-white/10 rounded-lg overflow-hidden bg-[var(--bg)]">
+																		<span className="text-[10px] text-slate-400 px-2 uppercase w-10 text-center border-r border-white/10">Факт</span>
+																		<input type="number" step="0.1" className="w-full bg-transparent text-sm px-2 py-1.5 focus:outline-none" value={vals.fact} onChange={e => setTaskMetric(task.id, component.key, 'fact', e.target.value)} disabled={!canWrite} />
 																	</div>
 																</div>
-															)
-														})}
-													</div>
-												)}
+															</div>
+														)
+													})}
+												</div>
 											</div>
 										)
 									})}
 								</div>
 							)}
 
-							{/* Футер формы сохранения */}
 							<div className="flex items-center justify-between pt-4 border-t border-white/10 mt-6">
 								<div className="flex items-center gap-3">
 									<span className="text-sm text-slate-400">Текущий месяц с учетом штрафов:</span>

@@ -2,6 +2,19 @@ package models
 
 import "time"
 
+// MetricValues описывает плановые и фактические показатели внутри задачи.
+type MetricValues struct {
+	Plan float64 `json:"plan"`
+	Fact float64 `json:"fact"`
+}
+
+// Task описывает структуру отдельной задачи/проекта сотрудника.
+type Task struct {
+	ID      string                  `json:"id"`
+	Title   string                  `json:"title"`
+	Metrics map[string]MetricValues `json:"metrics"`
+}
+
 // KPIComponentDefinition описывает один KPI-компонент отдела.
 type KPIComponentDefinition struct {
 	Key         string `json:"key"`
@@ -27,33 +40,36 @@ type EmployeeKPISummary struct {
 
 // EmployeeKPIRecord хранит KPI-данные по одному сотруднику и периоду.
 type EmployeeKPIRecord struct {
-	ID              int64              `json:"id"`
-	Name            string             `json:"name"`
-	DepartmentID    string             `json:"department_id"`
-	RecordID        string             `json:"record_id"`
-	Period          string             `json:"period"`
-	ContractType    string             `json:"contract_type"`
-	LatenessMinutes int                `json:"lateness_minutes"`
-	Vacation        string             `json:"vacation"`
-	SickLeaveDays   int                `json:"sick_leave_days"`
-	Training        string             `json:"training"`
-	OverallRating   float64            `json:"overall_rating"`
-	ComponentValues map[string]float64 `json:"component_values"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	ID              int64     `json:"id"`
+	Name            string    `json:"name"`
+	DepartmentID    string    `json:"department_id"`
+	RecordID        string    `json:"record_id"`
+	Period          string    `json:"period"`
+	ContractType    string    `json:"contract_type"`
+	LatenessMinutes int       `json:"lateness_minutes"`
+	Vacation        string    `json:"vacation"`
+	SickLeaveDays   int       `json:"sick_leave_days"`
+	Training        string    `json:"training"`
+	OverallRating   float64   `json:"overall_rating"`
+	Tasks           []Task    `json:"tasks" gorm:"serializer:json"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	ComponentValues interface{}
 }
 
-// KPIHistoryItem — одна точка истории KPI для графика.
+// KPIHistoryItem — одна точка истории KPI для графика и аккордеона.
 type KPIHistoryItem struct {
-	Period          string             `json:"period"`
-	OverallRating   float64            `json:"overall_rating"`
-	ComponentValues map[string]float64 `json:"component_values"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	Period          string    `json:"period"`
+	OverallRating   float64   `json:"overall_rating"`
+	LatenessMinutes int       `json:"lateness_minutes"`
+	SickLeaveDays   int       `json:"sick_leave_days"`
+	Tasks           []Task    `json:"tasks" gorm:"serializer:json"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 // KPIPagePayload — общая структура для страницы KPI.
 type KPIPagePayload struct {
 	Department       DepartmentKPIDefinition `json:"department"`
-	Employee         EmployeeRecord          `json:"employee"`
+	Employee         EmployeeRecord          `json:"employee"` // Предполагается, что EmployeeRecord описан в другом файле этого пакета
 	Current          *EmployeeKPIRecord      `json:"current,omitempty"`
 	History          []KPIHistoryItem        `json:"history"`
 	AvailablePeriods []string                `json:"available_periods"`
@@ -61,18 +77,17 @@ type KPIPagePayload struct {
 
 // KPIUpsertRequest — входные данные для сохранения KPI.
 type KPIUpsertRequest struct {
-	Period          string             `json:"period" binding:"required"`
-	ContractType    string             `json:"contract_type"`
-	LatenessMinutes int                `json:"lateness_minutes"`
-	Vacation        string             `json:"vacation"`
-	SickLeaveDays   int                `json:"sick_leave_days"`
-	Training        string             `json:"training"`
-	OverallRating   float64            `json:"overall_rating"`
-	ComponentValues map[string]float64 `json:"component_values"`
+	Period          string  `json:"period" binding:"required"`
+	ContractType    string  `json:"contract_type"`
+	LatenessMinutes int     `json:"lateness_minutes"`
+	Vacation        string  `json:"vacation"`
+	SickLeaveDays   int     `json:"sick_leave_days"`
+	Training        string  `json:"training"`
+	OverallRating   float64 `json:"overall_rating"`
+	Tasks           []Task  `json:"tasks"` // Теперь бэкенд без проблем примет массив задач с фронта
 }
 
 // GetDepartmentKPIDefinition возвращает KPI-набор для отдела.
-// Общая таблица KPI остаётся единой, а отличия отделов хранятся в JSON-компонентах.
 func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
 	switch departmentCode {
 	case "projects":
@@ -85,8 +100,6 @@ func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
 				{Key: "project_control", Label: "Самостоятельное ведение и контроль проекта"},
 				{Key: "margin_plan", Label: "Выполнение плана маржи", Unit: "%"},
 				{Key: "completed_projects", Label: "Количество реализованных проектов", Unit: "шт."},
-				{Key: "professional_growth", Label: "Профессиональное развитие сотрудника"},
-				{Key: "discipline", Label: "Трудовая дисциплина"},
 			},
 		}
 	case "tenders":
@@ -109,7 +122,6 @@ func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
 				{Key: "project_quality", Label: "Качество проекта"},
 				{Key: "project_control", Label: "Самостоятельное ведение и контроль"},
 				{Key: "completed_projects", Label: "Количество реализованных проектов", Unit: "шт."},
-				{Key: "discipline", Label: "Трудовая дисциплина"},
 			},
 		}
 	case "sa_sales":
@@ -119,10 +131,8 @@ func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
 			Components: []KPIComponentDefinition{
 				{Key: "annual_sales", Label: "Сумма продаж за год", Unit: "₸"},
 				{Key: "annual_profit", Label: "Сумма прибыли за год", Unit: "₸"},
-				{Key: "discipline", Label: "Трудовая дисциплина"},
 				{Key: "engagement", Label: "Вовлеченность сотрудника"},
 				{Key: "presentations_quality", Label: "Презентации (качество)"},
-				{Key: "training", Label: "Обучение"},
 			},
 		}
 	case "designers":
@@ -141,10 +151,7 @@ func GetDepartmentKPIDefinition(departmentCode string) DepartmentKPIDefinition {
 		return DepartmentKPIDefinition{
 			DepartmentCode: departmentCode,
 			Title:          "KPI отдела",
-			Components: []KPIComponentDefinition{
-				{Key: "discipline", Label: "Трудовая дисциплина"},
-				{Key: "training", Label: "Обучение"},
-			},
+			Components:     []KPIComponentDefinition{}, // Пустой слайс, если у отдела нет кастомных метрик
 		}
 	}
 }

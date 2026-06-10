@@ -66,10 +66,10 @@ func GetRecordKPI(c *gin.Context) {
 	if current == nil && len(history) > 0 {
 		last := history[len(history)-1]
 		current = &models.EmployeeKPIRecord{
-			Period:          last.Period,
-			OverallRating:   last.OverallRating,
-			ComponentValues: last.ComponentValues,
-			UpdatedAt:       last.UpdatedAt,
+			Period:        last.Period,
+			OverallRating: last.OverallRating,
+			Tasks:         last.Tasks,
+			UpdatedAt:     last.UpdatedAt,
 		}
 	}
 
@@ -122,8 +122,8 @@ func UpsertRecordKPI(c *gin.Context) {
 	if req.ContractType == "" {
 		req.ContractType = "ТД"
 	}
-	if req.ComponentValues == nil {
-		req.ComponentValues = map[string]float64{}
+	if req.Tasks == nil {
+		req.Tasks = []models.Task{}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -136,16 +136,9 @@ func UpsertRecordKPI(c *gin.Context) {
 	}
 
 	definition := models.GetDepartmentKPIDefinition(department.Code)
-	componentValues, err := normalizeComponentValues(req.ComponentValues, definition)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if req.OverallRating == 0 && len(componentValues) > 0 {
-		req.OverallRating = averageMap(componentValues)
-	}
 
-	componentJSON, err := json.Marshal(componentValues)
+	// Сериализуем массив динамических задач напрямую в JSON-строку
+	componentJSON, err := json.Marshal(req.Tasks)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сериализации KPI"})
 		return
@@ -187,7 +180,7 @@ ON CONFLICT (department_id, record_id, period) DO UPDATE SET
 	})
 }
 
-// ApplyKPIToRecords enriches employee records with latest KPI summaries and sorts them by rating.
+// ApplyKPIToRecords обогащает записи сотрудников актуальными сводками KPI и сортирует их по рейтингу.
 func ApplyKPIToRecords(ctx context.Context, deptID primitive.ObjectID, records []models.EmployeeRecord) []models.EmployeeRecord {
 	if !database.HasSQL() || len(records) == 0 {
 		return records
@@ -252,7 +245,7 @@ func writeRecordLookupError(c *gin.Context, err error) {
 
 func readKPIHistory(ctx context.Context, deptID, recordID string) ([]models.KPIHistoryItem, error) {
 	rows, err := database.SQLDB.QueryContext(ctx, `
-SELECT period, overall_rating, component_values, updated_at
+SELECT period, overall_rating, lateness_minutes, sick_leave_days, component_values, updated_at
 FROM employee_kpi
 WHERE department_id = $1 AND record_id = $2
 ORDER BY period ASC, updated_at ASC
@@ -294,50 +287,23 @@ func pickKPIByPeriod(history []models.KPIHistoryItem, period string) *models.Emp
 	}
 	if period == "" {
 		return &models.EmployeeKPIRecord{
-			Period:          history[len(history)-1].Period,
-			OverallRating:   history[len(history)-1].OverallRating,
-			ComponentValues: history[len(history)-1].ComponentValues,
-			UpdatedAt:       history[len(history)-1].UpdatedAt,
+			Period:        history[len(history)-1].Period,
+			OverallRating: history[len(history)-1].OverallRating,
+			Tasks:         history[len(history)-1].Tasks,
+			UpdatedAt:     history[len(history)-1].UpdatedAt,
 		}
 	}
 	for _, item := range history {
 		if item.Period == period {
 			return &models.EmployeeKPIRecord{
-				Period:          item.Period,
-				OverallRating:   item.OverallRating,
-				ComponentValues: item.ComponentValues,
-				UpdatedAt:       item.UpdatedAt,
+				Period:        item.Period,
+				OverallRating: item.OverallRating,
+				Tasks:         item.Tasks,
+				UpdatedAt:     item.UpdatedAt,
 			}
 		}
 	}
 	return nil
-}
-
-func normalizeComponentValues(values map[string]float64, definition models.DepartmentKPIDefinition) (map[string]float64, error) {
-	allowed := make(map[string]struct{}, len(definition.Components))
-	for _, component := range definition.Components {
-		allowed[component.Key] = struct{}{}
-	}
-
-	result := make(map[string]float64, len(values))
-	for key, value := range values {
-		if _, ok := allowed[key]; !ok {
-			return nil, fmt.Errorf("неизвестный KPI-компонент: %s", key)
-		}
-		result[key] = value
-	}
-	return result, nil
-}
-
-func averageMap(values map[string]float64) float64 {
-	if len(values) == 0 {
-		return 0
-	}
-	total := 0.0
-	for _, value := range values {
-		total += value
-	}
-	return total / float64(len(values))
 }
 
 func scanKPIRecord(scanner interface{ Scan(dest ...any) error }) (models.EmployeeKPIRecord, error) {
@@ -360,9 +326,9 @@ func scanKPIRecord(scanner interface{ Scan(dest ...any) error }) (models.Employe
 	); err != nil {
 		return models.EmployeeKPIRecord{}, err
 	}
-	record.ComponentValues = map[string]float64{}
+	record.Tasks = []models.Task{}
 	if len(componentBytes) > 0 {
-		if err := json.Unmarshal(componentBytes, &record.ComponentValues); err != nil {
+		if err := json.Unmarshal(componentBytes, &record.Tasks); err != nil {
 			return models.EmployeeKPIRecord{}, err
 		}
 	}
@@ -372,12 +338,12 @@ func scanKPIRecord(scanner interface{ Scan(dest ...any) error }) (models.Employe
 func scanKPIHistoryItem(rows *sql.Rows) (models.KPIHistoryItem, error) {
 	var item models.KPIHistoryItem
 	var componentBytes []byte
-	if err := rows.Scan(&item.Period, &item.OverallRating, &componentBytes, &item.UpdatedAt); err != nil {
+	if err := rows.Scan(&item.Period, &item.OverallRating, &item.LatenessMinutes, &item.SickLeaveDays, &componentBytes, &item.UpdatedAt); err != nil {
 		return models.KPIHistoryItem{}, err
 	}
-	item.ComponentValues = map[string]float64{}
+	item.Tasks = []models.Task{}
 	if len(componentBytes) > 0 {
-		if err := json.Unmarshal(componentBytes, &item.ComponentValues); err != nil {
+		if err := json.Unmarshal(componentBytes, &item.Tasks); err != nil {
 			return models.KPIHistoryItem{}, err
 		}
 	}
@@ -425,4 +391,9 @@ ORDER BY record_id, period DESC, updated_at DESC
 		result[recordID] = models.EmployeeKPISummary{OverallRating: overall, Period: period, UpdatedAt: updatedAt}
 	}
 	return result, rows.Err()
+}
+
+// Заглушка для обработки ошибок валидации Gin
+func validationError(err error) string {
+	return err.Error()
 }
