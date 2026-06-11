@@ -41,10 +41,18 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/departments" element={<DepartmentsListPage />} />
               <Route path="/departments/:id" element={<DepartmentPage />} />
-              <Route path="/departments/:id/records/new" element={<RecordFormPage />} />
+              <Route path="/departments/:id/records/new" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <RecordFormPage />
+                </ProtectedRoute>
+              } />
                 <Route path="/departments/:id/records/:rid" element={<RecordPage />} />
               <Route path="/departments/:id/records/:rid/kpi" element={<EmployeeKPIPage />} />
-              <Route path="/departments/:id/records/:rid/edit" element={<RecordFormPage />} />
+              <Route path="/departments/:id/records/:rid/edit" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <RecordFormPage />
+                </ProtectedRoute>
+              } />
 
               {/* Только директор */}
               <Route path="/admin/users" element={

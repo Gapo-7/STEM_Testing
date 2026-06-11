@@ -10,10 +10,10 @@ import (
 // Роли пользователей — определяют уровень доступа в системе.
 // Иерархия: чем меньше число, тем выше уровень доступа.
 const (
-	RoleDirector        = "director"         // Уровень 1 — доступ ко всем отделам
+	RoleDirector         = "director"          // Уровень 1 — доступ ко всем отделам
 	RoleManagingDirector = "managing_director" // Уровень 2 — доступ ко всем отделам
-	RoleDepartmentHead  = "department_head"  // Уровень 3 — только свой отдел
-	RoleEmployee        = "employee"         // Уровень 4 — только своя карточка
+	RoleDepartmentHead   = "department_head"   // Уровень 3 — только свой отдел
+	RoleEmployee         = "employee"          // Уровень 4 — только своя карточка
 )
 
 // HierarchyLevel возвращает числовой уровень иерархии по роли.
@@ -49,19 +49,40 @@ func (u *User) CanAccessAllDepartments() bool {
 	return HierarchyLevel(u.Role) <= 2
 }
 
-// CanAccessDepartment проверяет, есть ли у пользователя доступ к конкретному отделу.
+// // CanAccessDepartment проверяет, есть ли у пользователя доступ к конкретному отделу.
+// func (u *User) CanAccessDepartment(deptID primitive.ObjectID) bool {
+// 	if u.CanAccessAllDepartments() {
+// 		return true
+// 	}
+// 	// Руководитель отдела видит только свой отдел
+// 	if u.Role == RoleDepartmentHead && u.DepartmentID != nil {
+// 		return *u.DepartmentID == deptID
+// 	}
+// 	return false
+// }
+
+// // CanWrite проверяет, может ли пользователь создавать/редактировать записи в отделе.
+// func (u *User) CanWrite(deptID primitive.ObjectID) bool {
+// 	return u.CanAccessDepartment(deptID)
+// }
+
+// ЗАМЕНИТЬ эти два метода:
+
 func (u *User) CanAccessDepartment(deptID primitive.ObjectID) bool {
 	if u.CanAccessAllDepartments() {
 		return true
 	}
-	// Руководитель отдела видит только свой отдел
-	if u.Role == RoleDepartmentHead && u.DepartmentID != nil {
-		return *u.DepartmentID == deptID
+	// department_head И employee видят свой отдел
+	if u.DepartmentID != nil && *u.DepartmentID == deptID {
+		return u.Role == RoleDepartmentHead || u.Role == RoleEmployee
 	}
 	return false
 }
 
-// CanWrite проверяет, может ли пользователь создавать/редактировать записи в отделе.
 func (u *User) CanWrite(deptID primitive.ObjectID) bool {
-	return u.CanAccessDepartment(deptID)
+	if !u.CanAccessDepartment(deptID) {
+		return false
+	}
+	// employee только читает
+	return u.Role != RoleEmployee
 }
