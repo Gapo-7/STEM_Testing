@@ -42,6 +42,16 @@ func GetRecords(c *gin.Context) {
 		}
 	}
 
+	if status := c.Query("status"); status != "" {
+		if !isValidStatus(status) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный статус"})
+			return
+		}
+		filter["status"] = status
+	} else {
+		filter["status"] = models.StatusActive
+	}
+
 	opts := options.Find().SetSort(bson.D{{Key: "last_name", Value: 1}})
 	cursor, err := database.Collection("employee_records").Find(ctx, filter, opts)
 	if err != nil {
@@ -288,6 +298,15 @@ func DeleteRecord(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Запись удалена"})
+}
+
+func isValidStatus(s string) bool {
+	switch s {
+	case models.StatusActive, models.StatusInactive, models.StatusOnLeave:
+		return true
+	default:
+		return false
+	}
 }
 
 func statusOrDefault(s string) string {

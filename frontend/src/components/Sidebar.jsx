@@ -44,6 +44,18 @@ export default function Sidebar() {
           </NavLink>
         )}
 
+        {(isDirector || isManaging || user?.role === 'department_head') && (
+          <>
+            <p className="px-3 mt-4 mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>HR</p>
+            <NavLink to="/adaptation" className={({ isActive }) => `${link} ${isActive ? active : inactive}`} style={({ isActive }) => ({ color: isActive ? undefined : 'var(--text)' })}>
+              <Users size={17} /> Адаптация
+            </NavLink>
+            <NavLink to="/archive" className={({ isActive }) => `${link} ${isActive ? active : inactive}`} style={({ isActive }) => ({ color: isActive ? undefined : 'var(--text)' })}>
+              <ShieldCheck size={17} /> Архив
+            </NavLink>
+          </>
+        )}
+
         {(isDirector || isManaging) && (
           <>
             <p className="px-3 mt-4 mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Администрирование</p>

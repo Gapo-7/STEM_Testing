@@ -47,11 +47,12 @@ func GetDepartments(c *gin.Context) {
 		return
 	}
 
-	// Добавляем количество записей для каждого отдела
+	// Добавляем количество активных записей для каждого отдела
 	result := make([]models.DepartmentWithStats, 0, len(departments))
 	for _, dept := range departments {
 		count, _ := database.Collection("employee_records").CountDocuments(ctx, bson.M{
 			"department_id": dept.ID,
+			"status":        models.StatusActive,
 		})
 		result = append(result, models.DepartmentWithStats{
 			Department:  dept,
