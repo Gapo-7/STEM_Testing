@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Search, User, Phone, Mail, Pencil, Trash2, AlertCircle, Trophy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
+import { createFiredEmployee } from '../api/archive'
 
 const statusLabel = { active: 'Работает', inactive: 'Уволен', on_leave: 'В отпуске' }
 const statusColor = { active: 'bg-green-500/15 text-green-400', inactive: 'bg-red-500/15 text-red-400', on_leave: 'bg-amber-500/15 text-amber-400' }
@@ -15,12 +16,17 @@ export default function DepartmentPage() {
   const [records, setRecords] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [deleteId, setDeleteId] = useState(null)
+  const [firingId, setFiringId] = useState(null)
+  const [firingDate, setFiringDate] = useState('')
+  const [firingReason, setFiringReason] = useState('')
 
   const canWrite = user?.role === 'director' || user?.role === 'managing_director' || user?.role === 'department_head'
 
   useEffect(() => {
-    Promise.all([api.get(`/departments/${id}`), api.get(`/departments/${id}/records`)])
+    Promise.all([
+      api.get(`/departments/${id}`),
+      api.get(`/departments/${id}/records`, { params: { status: 'active' } }),
+    ])
       .then(([d, r]) => { setDept(d.data); setRecords(r.data) })
       .catch(() => navigate('/dashboard'))
       .finally(() => setLoading(false))
@@ -30,10 +36,45 @@ export default function DepartmentPage() {
     `${r.last_name} ${r.first_name} ${r.middle_name} ${r.position}`.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleDelete = async rid => {
-    try { await api.delete(`/departments/${id}/records/${rid}`); setRecords(r => r.filter(x => x.id !== rid)) }
-    catch (e) { alert(e.response?.data?.error || 'Ошибка удаления') }
-    setDeleteId(null)
+  const handleFire = async rid => {
+    const record = records.find(r => r.id === rid)
+    if (!record) {
+      alert('Запись не найдена')
+      setFiringId(null)
+      return
+    }
+
+    if (!firingDate || !firingReason.trim()) {
+      alert('Укажите дату увольнения и причину.')
+      return
+    }
+
+    try {
+      await createFiredEmployee({
+        last_name: record.last_name,
+        first_name: record.first_name,
+        middle_name: record.middle_name,
+        position: record.position,
+        department_id: id,
+        phone: record.phone,
+        email: record.email,
+        employee_num: record.employee_num || '',
+        hire_date: record.start_date ? new Date(record.start_date).toISOString().slice(0, 10) : '',
+        fire_date: firingDate,
+        fire_reason: firingReason.trim(),
+        fire_type: 'forced',
+        original_record_id: record.id,
+        notes: record.notes || '',
+      })
+      setRecords(r => r.filter(x => x.id !== rid))
+      alert('Сотрудник успешно уволен и добавлен в архив.')
+    } catch (e) {
+      alert(e.response?.data?.error || 'Ошибка увольнения')
+    } finally {
+      setFiringId(null)
+      setFiringDate('')
+      setFiringReason('')
+    }
   }
 
   if (loading) return (
@@ -108,11 +149,11 @@ export default function DepartmentPage() {
                 )}
                 {canWrite && (
                   <>
-                    <button onClick={() => navigate(`/departments/${id}/records/${rec.id}/edit`)}
+                    <button onClick={e => { e.stopPropagation(); navigate(`/departments/${id}/records/${rec.id}/edit`) }}
                       className="p-1.5 rounded-lg hover:bg-white/5 transition-colors" style={{ color: 'var(--muted)' }}>
                       <Pencil size={14} />
                     </button>
-                    <button onClick={() => setDeleteId(rec.id)}
+                    <button onClick={e => { e.stopPropagation(); setFiringId(rec.id); setFiringDate(''); setFiringReason('') }}
                       className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors">
                       <Trash2 size={14} />
                     </button>
@@ -126,17 +167,27 @@ export default function DepartmentPage() {
       )}
 
       {/* Модал подтверждения удаления */}
-      {deleteId && (
+      {firingId && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="card max-w-sm w-full">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle size={20} className="text-red-400" />
-              <h3 className="font-semibold font-display" style={{ color: 'var(--text)' }}>Удалить запись?</h3>
+              <h3 className="font-semibold font-display" style={{ color: 'var(--text)' }}>Уволить сотрудника?</h3>
             </div>
-            <p className="text-sm mb-6" style={{ color: 'var(--muted)' }}>Это действие нельзя отменить.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setDeleteId(null)} className="btn-ghost flex-1" style={{ color: 'var(--muted)' }}>Отмена</button>
-              <button onClick={() => handleDelete(deleteId)} className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-400 transition-colors">Удалить</button>
+            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Заполните дату увольнения и причину.</p>
+            <div className="grid gap-4">
+              <label className="block">
+                <span className="label">Дата увольнения</span>
+                <input type="date" className="input-field" value={firingDate} onChange={e => setFiringDate(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="label">Причина увольнения</span>
+                <input type="text" className="input-field" value={firingReason} onChange={e => setFiringReason(e.target.value)} placeholder="Например, сокращение штатной единицы" />
+              </label>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => { setFiringId(null); setFiringDate(''); setFiringReason('') }} className="btn-ghost flex-1" style={{ color: 'var(--muted)' }}>Отмена</button>
+              <button onClick={() => handleFire(firingId)} className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-400 transition-colors">Уволить</button>
             </div>
           </div>
         </div>

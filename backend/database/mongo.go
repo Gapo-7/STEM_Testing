@@ -87,5 +87,14 @@ func createIndexes() {
 		log.Printf("[db] Предупреждение при создании TTL-индекса токенов: %v", err)
 	}
 
+	firedColl := DB.Collection("fired_employees")
+	_, err = firedColl.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "original_record_id", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	if err != nil {
+		log.Printf("[db] Предупреждение при создании индекса fired_employees.original_record_id: %v", err)
+	}
+
 	log.Println("[db] Индексы созданы")
 }

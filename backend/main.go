@@ -89,6 +89,29 @@ func main() {
 			depts.GET("/:id/records/:rid/download/:docid", handlers.DownloadDocument)
 			depts.DELETE("/:id/records/:rid/documents/:docid", handlers.DeleteDocument)
 		}
+
+		// Адаптация
+		adaptation := protected.Group("/adaptation")
+		{
+			adaptation.GET("/departments", handlers.GetAdaptationDepartments)
+			adaptation.GET("/:deptId/candidates", handlers.GetAdaptationCandidates)
+			adaptation.POST("/:deptId/candidates", handlers.CreateAdaptationCandidate)
+			adaptation.GET("/candidates/:id", handlers.GetAdaptationCandidate)
+			adaptation.PUT("/candidates/:id", handlers.UpdateAdaptationCandidate)
+			adaptation.POST("/candidates/:id/criteria", handlers.AddAdaptationCriterion)
+			adaptation.PUT("/candidates/:id/criteria/:cId", handlers.UpdateAdaptationCriterion)
+			adaptation.DELETE("/candidates/:id/criteria/:cId", handlers.DeleteAdaptationCriterion)
+			adaptation.POST("/candidates/:id/promote", handlers.PromoteAdaptationCandidate)
+		}
+
+		// Архив
+		archive := protected.Group("/archive")
+		{
+			archive.GET("/failed", handlers.GetArchiveFailed)
+			archive.GET("/fired", handlers.GetArchiveFired)
+			archive.POST("/fired", handlers.CreateFiredEmployee)
+			archive.GET("/fired/:id", handlers.GetFiredEmployee)
+		}
 	}
 
 	log.Printf("[server] Запуск на порту :%s", config.App.Port)

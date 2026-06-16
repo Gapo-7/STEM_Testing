@@ -13,6 +13,11 @@ import RecordFormPage from './pages/RecordFormPage'
 import RecordPage from './pages/RecordPage'
 import {EmployeeKPIPage} from './pages/EmployeeKPIPage'
 import UsersAdminPage from './pages/UsersAdminPage'
+import AdaptationDashboard from './pages/AdaptationDashboard'
+import AdaptationDeptPage from './pages/AdaptationDeptPage'
+import AdaptationCandidateForm from './pages/AdaptationCandidateForm'
+import AdaptationCandidateCard from './pages/AdaptationCandidateCard'
+import ArchivePage from './pages/ArchivePage'
 
 // Layout с боковой панелью для защищённых страниц
 function AppLayout() {
@@ -51,6 +56,32 @@ export default function App() {
               <Route path="/departments/:id/records/:rid/edit" element={
                 <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
                   <RecordFormPage />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/adaptation" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <AdaptationDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/adaptation/:deptId" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <AdaptationDeptPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/adaptation/:deptId/new" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <AdaptationCandidateForm />
+                </ProtectedRoute>
+              } />
+              <Route path="/adaptation/:deptId/candidates/:id" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <AdaptationCandidateCard />
+                </ProtectedRoute>
+              } />
+              <Route path="/archive" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <ArchivePage />
                 </ProtectedRoute>
               } />
 
