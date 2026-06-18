@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"stem-doc-manager/database"
@@ -96,6 +97,12 @@ func GetArchiveFired(c *gin.Context) {
 
 	visible := make([]models.FiredEmployee, 0, len(byOriginal))
 	for _, item := range byOriginal {
+		var original models.EmployeeRecord
+		if err := database.Collection("employee_records").FindOne(ctx, bson.M{"_id": item.OriginalRecordID}).Decode(&original); err == nil {
+			enrichFiredEmployeeFromRecord(&item, original)
+		} else if item.AvatarPath != "" {
+			item.AvatarURL = "/uploads/" + filepath.ToSlash(item.AvatarPath)
+		}
 		visible = append(visible, item)
 	}
 
@@ -192,6 +199,7 @@ func CreateFiredEmployee(c *gin.Context) {
 		Email:            req.Email,
 		EmployeeNum:      req.EmployeeNum,
 		HireDate:         hireDate,
+		StartDate:        hireDate,
 		FireDate:         fireDate,
 		FireReason:       req.FireReason,
 		FireType:         req.FireType,
@@ -227,6 +235,51 @@ func CreateFiredEmployee(c *gin.Context) {
 	c.JSON(http.StatusCreated, item)
 }
 
+func enrichFiredEmployeeFromRecord(item *models.FiredEmployee, original models.EmployeeRecord) {
+	if item.City == "" {
+		item.City = original.City
+	}
+	if item.HireDate == nil {
+		item.HireDate = original.StartDate
+	}
+	if item.StartDate == nil {
+		item.StartDate = original.StartDate
+	}
+	if item.StartDate == nil && item.HireDate != nil {
+		item.StartDate = item.HireDate
+	}
+	if item.EndDate == nil {
+		item.EndDate = original.EndDate
+	}
+	if item.Status == "" {
+		item.Status = original.Status
+	}
+	if len(item.Documents) == 0 && len(original.Documents) > 0 {
+		item.Documents = original.Documents
+	}
+	if item.AvatarPath == "" {
+		item.AvatarPath = original.AvatarPath
+	}
+	if item.Phone == "" {
+		item.Phone = original.Phone
+	}
+	if item.Email == "" {
+		item.Email = original.Email
+	}
+	if item.EmployeeNum == "" {
+		item.EmployeeNum = original.EmployeeNum
+	}
+	if item.Position == "" {
+		item.Position = original.Position
+	}
+	if item.OriginalNotes == "" {
+		item.OriginalNotes = original.Notes
+	}
+	if item.AvatarPath != "" {
+		item.AvatarURL = "/uploads/" + filepath.ToSlash(item.AvatarPath)
+	}
+}
+
 // GET /api/archive/fired/:id
 func GetFiredEmployee(c *gin.Context) {
 	user, _ := middleware.GetCurrentUser(c)
@@ -247,6 +300,15 @@ func GetFiredEmployee(c *gin.Context) {
 	if !user.CanAccessDepartment(item.DepartmentID) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Нет доступа к этому сотруднику"})
 		return
+	}
+
+	var original models.EmployeeRecord
+	if err := database.Collection("employee_records").FindOne(ctx, bson.M{"_id": item.OriginalRecordID}).Decode(&original); err == nil {
+		enrichFiredEmployeeFromRecord(&item, original)
+	} else {
+		if item.AvatarPath != "" {
+			item.AvatarURL = "/uploads/" + filepath.ToSlash(item.AvatarPath)
+		}
 	}
 
 	c.JSON(http.StatusOK, item)

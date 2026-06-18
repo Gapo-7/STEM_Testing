@@ -24,6 +24,7 @@ func main() {
 	handlers.SeedDatabase()
 
 	r := gin.Default()
+	r.Static("/uploads", "./uploads")
 
 	// CORS
 	r.Use(cors.New(cors.Config{
@@ -81,6 +82,7 @@ func main() {
 			depts.GET("/:id/records/:rid", handlers.GetRecord)
 			depts.PUT("/:id/records/:rid", handlers.UpdateRecord)
 			depts.DELETE("/:id/records/:rid", handlers.DeleteRecord)
+			depts.POST("/:id/records/:rid/avatar", handlers.UploadRecordAvatar)
 			depts.GET("/:id/records/:rid/kpi", handlers.GetRecordKPI)
 			depts.PUT("/:id/records/:rid/kpi", handlers.UpsertRecordKPI)
 

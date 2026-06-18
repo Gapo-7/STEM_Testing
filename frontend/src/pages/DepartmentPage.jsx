@@ -121,8 +121,12 @@ export default function DepartmentPage() {
             const rank = index + 1
             return (
             <div key={rec.id} className="card p-4 flex items-center gap-4 hover:border-cyan-500/30 transition-all cursor-pointer" onClick={() => navigate(`/departments/${id}/records/${rec.id}`)}>
-              <div className="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 font-semibold text-sm font-display flex-shrink-0">
-                {rec.last_name?.[0]}{rec.first_name?.[0]}
+              <div className="w-10 h-10 rounded-full bg-cyan-500/15 flex items-center justify-center text-cyan-400 font-semibold text-sm font-display flex-shrink-0 overflow-hidden">
+                {rec.avatar_url ? (
+                  <img src={rec.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{rec.last_name?.[0]}{rec.first_name?.[0]}</span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm" style={{ color: 'var(--text)' }}>

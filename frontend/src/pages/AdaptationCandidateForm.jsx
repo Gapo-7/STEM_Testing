@@ -32,6 +32,14 @@ export default function AdaptationCandidateForm() {
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(`/adaptation/${deptId}`)
+    }
+  }
+
   const handleSubmit = async event => {
     event.preventDefault()
     setProcessing(true)
@@ -48,7 +56,7 @@ export default function AdaptationCandidateForm() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <button onClick={() => navigate(`/adaptation/${deptId}`)} className="btn-ghost mb-6">
+      <button onClick={handleBack} className="btn-ghost mb-6">
         <ArrowLeft size={18} /> Назад
       </button>
       <div className="mb-6">

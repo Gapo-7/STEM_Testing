@@ -18,6 +18,7 @@ import AdaptationDeptPage from './pages/AdaptationDeptPage'
 import AdaptationCandidateForm from './pages/AdaptationCandidateForm'
 import AdaptationCandidateCard from './pages/AdaptationCandidateCard'
 import ArchivePage from './pages/ArchivePage'
+import FiredEmployeePage from './pages/FiredEmployeePage'
 
 // Layout с боковой панелью для защищённых страниц
 function AppLayout() {
@@ -82,6 +83,11 @@ export default function App() {
               <Route path="/archive" element={
                 <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
                   <ArchivePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/archive/fired/:id" element={
+                <ProtectedRoute roles={['director', 'managing_director', 'department_head']}>
+                  <FiredEmployeePage />
                 </ProtectedRoute>
               } />
 

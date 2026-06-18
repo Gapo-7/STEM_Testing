@@ -55,6 +55,9 @@ type EmployeeRecord struct {
 	// --- Дополнительно ---
 	Notes string `bson:"notes" json:"notes"` // Произвольные заметки
 
+	AvatarPath string `bson:"avatar_path,omitempty" json:"avatar_path,omitempty"` // Относительный путь к файлу аватара
+	AvatarURL  string `bson:"-" json:"avatar_url,omitempty"`                      // URL для доступа к аватару
+
 	// --- KPI summary ---
 	KPI *EmployeeKPISummary `bson:"-" json:"kpi,omitempty"`
 

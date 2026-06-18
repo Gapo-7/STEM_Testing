@@ -15,6 +15,19 @@ export const uploadDocument = async (deptId, recordId, file, docType = 'other', 
   return response.data
 }
 
+export const uploadRecordAvatar = async (deptId, recordId, file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await api.post(
+    `/departments/${deptId}/records/${recordId}/avatar`,
+    formData,
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  )
+  return response.data
+}
+
 // Скачать документ
 export const downloadDocument = async (deptId, recordId, docId) => {
   const response = await api.get(

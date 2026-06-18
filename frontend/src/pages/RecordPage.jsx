@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, BarChart3, Phone, Mail, Calendar } from 'lucide-react'
+import { ArrowLeft, BarChart3, Phone, Mail, Calendar, Camera } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import DocumentsPanel from '../components/DocumentsPanel'
@@ -11,8 +11,19 @@ export default function RecordPage() {
   const { user } = useAuth()
   const [record, setRecord] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const avatarInputRef = useRef(null)
 
   const canWrite = user?.role === 'director' || user?.role === 'managing_director' || user?.role === 'department_head'
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(`/departments/${id}`)
+    }
+  }
 
   useEffect(() => {
     api.get(`/departments/${id}/records/${rid}`)
@@ -25,6 +36,33 @@ export default function RecordPage() {
     api.get(`/departments/${id}/records/${rid}`)
       .then(r => setRecord(r.data))
       .catch(() => {})
+  }
+
+  const handleAvatarChange = async event => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setAvatarError('Только JPG и PNG файлы поддерживаются')
+      return
+    }
+
+    setAvatarError('')
+    setUploadingAvatar(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      await api.post(`/departments/${id}/records/${rid}/avatar`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      handleRecordUpdate()
+    } catch (err) {
+      setAvatarError(err.response?.data?.error || 'Ошибка загрузки аватара')
+    } finally {
+      setUploadingAvatar(false)
+      event.target.value = ''
+    }
   }
 
   if (loading) return (
@@ -45,29 +83,67 @@ export default function RecordPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       {/* Заголовок */}
-      <div className="flex items-start justify-between gap-3 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
-        <button onClick={() => navigate(`/departments/${id}`)} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
-          <ArrowLeft size={18} />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold font-display" style={{ color: 'var(--text)' }}>
-            {record.last_name} {record.first_name} {record.middle_name}
-          </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{record.position}</p>
+          <button onClick={handleBack} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold font-display" style={{ color: 'var(--text)' }}>
+              {record.last_name} {record.first_name} {record.middle_name}
+            </h1>
+            <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>{record.position}</p>
             {record.kpi && (
               <p className="text-xs mt-1 flex items-center gap-1" style={{ color: 'var(--muted)' }}>
                 <BarChart3 size={12} /> Рейтинг: {Number(record.kpi.overall_rating || 0).toFixed(1)}
               </p>
             )}
+          </div>
         </div>
-      </div>
         <button onClick={() => navigate(`/departments/${id}/records/${rid}/kpi`)} className="btn-primary flex items-center gap-2">
           <BarChart3 size={16} /> Смотреть KPI
         </button>
       </div>
       {/* Основная информация */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] gap-4 mb-6">
+        <div className="card p-4 flex flex-col items-center text-center gap-4">
+          <div className="relative">
+            <div className="w-32 h-32 rounded-full bg-slate-700 overflow-hidden border-2 border-cyan-500/20">
+              {record.avatar_url ? (
+                <img src={record.avatar_url} alt="Аватар" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-semibold text-2xl">
+                  {record.last_name?.[0]}{record.first_name?.[0]}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {avatarError && <p className="text-sm text-red-400">{avatarError}</p>}
+
+          {canWrite && (
+            <>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="btn-ghost flex items-center gap-2"
+              >
+                <Camera size={16} />
+                {record.avatar_url ? 'Изменить аватар' : 'Добавить аватар'}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </>
+          )}
+
+          {uploadingAvatar && <p className="text-xs text-slate-400">Загрузка аватара...</p>}
+        </div>
+
         <div className="card p-4 space-y-3">
           <div>
             <p className="text-xs" style={{ color: 'var(--muted)' }}>СТАТУС</p>

@@ -23,6 +23,14 @@ type FiredEmployee struct {
 	FireType         string             `bson:"fire_type" json:"fire_type"`
 	OriginalRecordID primitive.ObjectID `bson:"original_record_id" json:"original_record_id"`
 	Notes            string             `bson:"notes" json:"notes"`
+	City             string             `bson:"city,omitempty" json:"city,omitempty"`
+	StartDate        *time.Time         `bson:"start_date,omitempty" json:"start_date,omitempty"`
+	EndDate          *time.Time         `bson:"end_date,omitempty" json:"end_date,omitempty"`
+	Status           string             `bson:"status,omitempty" json:"status,omitempty"`
+	Documents        []DocumentMeta     `bson:"documents,omitempty" json:"documents,omitempty"`
+	AvatarPath       string             `bson:"avatar_path,omitempty" json:"avatar_path,omitempty"`
+	AvatarURL        string             `bson:"-" json:"avatar_url,omitempty"`
+	OriginalNotes    string             `bson:"original_notes,omitempty" json:"original_notes,omitempty"`
 	CreatedBy        primitive.ObjectID `bson:"created_by" json:"created_by"`
 	CreatedAt        time.Time          `bson:"created_at" json:"created_at"`
 }

@@ -153,11 +153,19 @@ export default function AdaptationCandidateCard() {
     )
   }
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(`/adaptation/${deptId}`)
+    }
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <button onClick={() => navigate(`/adaptation/${deptId}`)} className="btn-ghost mb-3">
+          <button onClick={handleBack} className="btn-ghost mb-3">
             <ArrowLeft size={18} /> Назад
           </button>
           <h1 className="text-2xl font-bold font-display" style={{ color: 'var(--text)' }}>

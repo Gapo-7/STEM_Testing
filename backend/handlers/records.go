@@ -2,7 +2,12 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"stem-doc-manager/database"
@@ -14,6 +19,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const (
+	maxAvatarFileSize   = 5 * 1024 * 1024 // 5 MB
+	maxDocumentFileSize = 50 * 1024 * 1024
+)
+
+var allowedAvatarExtensions = map[string]bool{
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+}
 
 // GET /api/departments/:id/records
 func GetRecords(c *gin.Context) {
@@ -66,6 +82,7 @@ func GetRecords(c *gin.Context) {
 		return
 	}
 	records = ApplyKPIToRecords(ctx, deptID, records)
+	setRecordAvatarURLs(records)
 
 	c.JSON(http.StatusOK, records)
 }
@@ -105,8 +122,138 @@ func GetRecord(c *gin.Context) {
 			record.KPI = &summary
 		}
 	}
+	setRecordAvatarURL(&record)
 
 	c.JSON(http.StatusOK, record)
+}
+
+func setRecordAvatarURL(record *models.EmployeeRecord) {
+	if record.AvatarPath != "" {
+		record.AvatarURL = "/uploads/" + filepath.ToSlash(record.AvatarPath)
+	}
+}
+
+func setRecordAvatarURLs(records []models.EmployeeRecord) {
+	for i := range records {
+		setRecordAvatarURL(&records[i])
+	}
+}
+
+// POST /api/departments/:id/records/:rid/avatar
+func UploadRecordAvatar(c *gin.Context) {
+	user, _ := middleware.GetCurrentUser(c)
+	deptID, err := primitive.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID отдела"})
+		return
+	}
+
+	recordID, err := primitive.ObjectIDFromHex(c.Param("rid"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID записи"})
+		return
+	}
+
+	if !user.CanWrite(deptID) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Нет прав для изменения аватара"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var record models.EmployeeRecord
+	if err := database.Collection("employee_records").FindOne(ctx, bson.M{"_id": recordID, "department_id": deptID}).Decode(&record); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Запись не найдена"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Файл не найден"})
+		return
+	}
+	defer file.Close()
+
+	if header.Size == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Файл пустой"})
+		return
+	}
+
+	if header.Size > maxAvatarFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Файл слишком большой (макс %d MB)", maxAvatarFileSize/1024/1024)})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !allowedAvatarExtensions[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Допустимые расширения: jpg, jpeg, png"})
+		return
+	}
+
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка чтения файла"})
+		return
+	}
+
+	contentType := http.DetectContentType(buf[:n])
+	if contentType != "image/jpeg" && contentType != "image/png" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Допустимые типы файлов: image/jpeg, image/png"})
+		return
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обработки файла"})
+		return
+	}
+
+	avatarFolder := filepath.Join(uploadsDir, "avatars", recordID.Hex())
+	if err := os.MkdirAll(avatarFolder, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания папки"})
+		return
+	}
+
+	fileName := fmt.Sprintf("%d_avatar%s", time.Now().Unix(), ext)
+	relativePath := filepath.Join("avatars", recordID.Hex(), fileName)
+	filePath := filepath.Join(uploadsDir, relativePath)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сохранения файла"})
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		os.Remove(filePath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка записи файла"})
+		return
+	}
+
+	if record.AvatarPath != "" {
+		oldAvatarPath := filepath.Join(uploadsDir, record.AvatarPath)
+		os.Remove(oldAvatarPath)
+	}
+
+	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = database.Collection("employee_records").UpdateOne(ctx,
+		bson.M{"_id": recordID, "department_id": deptID},
+		bson.M{"$set": bson.M{"avatar_path": relativePath, "updated_at": time.Now()}},
+	)
+	if err != nil {
+		os.Remove(filePath)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сохранения аватара"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Аватар загружен",
+		"avatar_url": "/uploads/" + filepath.ToSlash(relativePath),
+	})
 }
 
 // POST /api/departments/:id/records

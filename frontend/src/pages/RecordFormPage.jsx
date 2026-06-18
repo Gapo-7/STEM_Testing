@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, Camera } from 'lucide-react'
 import api from '../api/client'
+import { uploadRecordAvatar } from '../api/documents'
 
 const STATUSES = [{ v: 'active', l: 'Работает' }, { v: 'inactive', l: 'Уволен' }, { v: 'on_leave', l: 'В отпуске/Декрет' }]
 const DOC_TYPES = ['contract', 'id', 'diploma', 'certificate', 'order', 'other']
@@ -27,10 +28,21 @@ export default function RecordFormPage() {
   const navigate = useNavigate()
   const isEdit = !!rid && rid !== 'new'
   const [form, setForm] = useState(emptyForm())
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(`/departments/${deptId}`)
+    }
+  }
   const [dept, setDept] = useState(null)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [avatarURL, setAvatarURL] = useState('')
+  const [avatarError, setAvatarError] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef(null)
 
   useEffect(() => {
     api.get(`/departments/${deptId}`).then(r => setDept(r.data))
@@ -43,11 +55,14 @@ export default function RecordFormPage() {
             start_date: d.start_date ? d.start_date.split('T')[0] : '',
             documents: (d.documents || []).map(doc => ({ id: doc.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...doc })),
           })
+          setAvatarURL(d.avatar_url || '')
         })
         .catch(() => navigate(`/departments/${deptId}`))
         .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
     }
-  }, [deptId, rid])
+  }, [deptId, rid, isEdit])
 
   const handleChange = e => {
     const { name, value } = e.target
@@ -60,6 +75,29 @@ export default function RecordFormPage() {
   })
   const addDoc = () => setForm(f => ({ ...f, documents: [...f.documents, emptyDoc()] }))
   const removeDoc = i => setForm(f => ({ ...f, documents: f.documents.filter((_, j) => j !== i) }))
+
+  const handleAvatarChange = async event => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setAvatarError('Только JPG и PNG файлы поддерживаются')
+      return
+    }
+
+    setAvatarError('')
+    setUploadingAvatar(true)
+
+    try {
+      const response = await uploadRecordAvatar(deptId, rid, file)
+      setAvatarURL(response.avatar_url)
+    } catch (err) {
+      setAvatarError(err.response?.data?.error || 'Ошибка загрузки аватара')
+    } finally {
+      setUploadingAvatar(false)
+      event.target.value = ''
+    }
+  }
 
   const submit = async e => {
     e.preventDefault(); setError(''); setSaving(true)
@@ -76,7 +114,7 @@ export default function RecordFormPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate(`/departments/${deptId}`)} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
+        <button onClick={handleBack} className="p-1.5 rounded-lg btn-ghost" style={{ color: 'var(--muted)' }}>
           <ArrowLeft size={18} />
         </button>
         <div>
@@ -117,6 +155,35 @@ export default function RecordFormPage() {
             <Field id="employee_num" label="Табельный номер" placeholder="ТН-0001" value={form.employee_num} onChange={handleChange} />
           </div>
         </div>
+
+        {isEdit && (
+          <div className="card">
+            <h2 className="text-sm font-semibold font-display mb-4" style={{ color: 'var(--text)' }}>Аватар сотрудника</h2>
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-28 h-28 rounded-full bg-slate-700 overflow-hidden border border-slate-600">
+                {avatarURL ? (
+                  <img src={avatarURL} alt="Аватар" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white font-semibold text-2xl">
+                    {form.last_name?.[0]}{form.first_name?.[0]}
+                  </div>
+                )}
+              </div>
+              {avatarError && <p className="text-sm text-red-400">{avatarError}</p>}
+              <button type="button" onClick={() => avatarInputRef.current?.click()} className="btn-ghost flex items-center gap-2">
+                <Camera size={16} /> {avatarURL ? 'Изменить аватар' : 'Добавить аватар'}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/png,image/jpeg"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              {uploadingAvatar && <p className="text-xs text-slate-400">Загрузка аватара...</p>}
+            </div>
+          </div>
+        )}
 
         {/* ── Трудовые данные ── */}
         <div className="card">
@@ -184,7 +251,7 @@ export default function RecordFormPage() {
 
         {/* Кнопки */}
         <div className="flex gap-3 justify-end">
-          <button type="button" onClick={() => navigate(`/departments/${deptId}`)} className="btn-ghost" style={{ color: 'var(--muted)' }}>Отмена</button>
+          <button type="button" onClick={handleBack} className="btn-ghost" style={{ color: 'var(--muted)' }}>Отмена</button>
           <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
             {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
             {saving ? 'Сохранение...' : 'Сохранить'}

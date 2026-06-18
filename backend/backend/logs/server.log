@@ -1,0 +1,82 @@
+2026/06/17 14:06:28 [db] Подключено к MongoDB: mongodb://localhost:27017/stem_doc_manager
+2026/06/17 14:06:28 [db] Индексы созданы
+2026/06/17 14:06:28 [db] Подключено к PostgreSQL для KPI
+2026/06/17 14:06:28 [seed] База данных уже заполнена, пропускаем сид
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (3 handlers)
+[GIN-debug] HEAD   /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (3 handlers)
+[GIN-debug] POST   /api/auth/register        --> stem-doc-manager/handlers.Register (6 handlers)
+[GIN-debug] POST   /api/auth/login           --> stem-doc-manager/handlers.Login (6 handlers)
+[GIN-debug] POST   /api/auth/refresh         --> stem-doc-manager/handlers.RefreshToken (6 handlers)
+[GIN-debug] POST   /api/auth/logout          --> stem-doc-manager/handlers.Logout (6 handlers)
+[GIN-debug] GET    /api/users/me             --> stem-doc-manager/handlers.GetMe (7 handlers)
+[GIN-debug] GET    /api/users                --> stem-doc-manager/handlers.GetUsers (8 handlers)
+[GIN-debug] GET    /api/users/:id            --> stem-doc-manager/handlers.GetUser (8 handlers)
+[GIN-debug] PUT    /api/users/:id            --> stem-doc-manager/handlers.UpdateUser (8 handlers)
+[GIN-debug] DELETE /api/users/:id            --> stem-doc-manager/handlers.DeleteUser (8 handlers)
+[GIN-debug] PUT    /api/users/me             --> stem-doc-manager/handlers.UpdateUser (7 handlers)
+[GIN-debug] GET    /api/departments          --> stem-doc-manager/handlers.GetDepartments (7 handlers)
+[GIN-debug] GET    /api/departments/:id      --> stem-doc-manager/handlers.GetDepartment (7 handlers)
+[GIN-debug] POST   /api/departments          --> stem-doc-manager/handlers.CreateDepartment (8 handlers)
+[GIN-debug] PUT    /api/departments/:id      --> stem-doc-manager/handlers.UpdateDepartment (8 handlers)
+[GIN-debug] DELETE /api/departments/:id      --> stem-doc-manager/handlers.DeleteDepartment (8 handlers)
+[GIN-debug] GET    /api/departments/:id/records --> stem-doc-manager/handlers.GetRecords (7 handlers)
+[GIN-debug] POST   /api/departments/:id/records --> stem-doc-manager/handlers.CreateRecord (7 handlers)
+[GIN-debug] GET    /api/departments/:id/records/:rid --> stem-doc-manager/handlers.GetRecord (7 handlers)
+[GIN-debug] PUT    /api/departments/:id/records/:rid --> stem-doc-manager/handlers.UpdateRecord (7 handlers)
+[GIN-debug] DELETE /api/departments/:id/records/:rid --> stem-doc-manager/handlers.DeleteRecord (7 handlers)
+[GIN-debug] POST   /api/departments/:id/records/:rid/avatar --> stem-doc-manager/handlers.UploadRecordAvatar (7 handlers)
+[GIN-debug] GET    /api/departments/:id/records/:rid/kpi --> stem-doc-manager/handlers.GetRecordKPI (7 handlers)
+[GIN-debug] PUT    /api/departments/:id/records/:rid/kpi --> stem-doc-manager/handlers.UpsertRecordKPI (7 handlers)
+[GIN-debug] POST   /api/departments/:id/records/:rid/upload --> stem-doc-manager/handlers.UploadDocument (7 handlers)
+[GIN-debug] GET    /api/departments/:id/records/:rid/download/:docid --> stem-doc-manager/handlers.DownloadDocument (7 handlers)
+[GIN-debug] DELETE /api/departments/:id/records/:rid/documents/:docid --> stem-doc-manager/handlers.DeleteDocument (7 handlers)
+[GIN-debug] GET    /api/adaptation/departments --> stem-doc-manager/handlers.GetAdaptationDepartments (7 handlers)
+[GIN-debug] GET    /api/adaptation/:deptId/candidates --> stem-doc-manager/handlers.GetAdaptationCandidates (7 handlers)
+[GIN-debug] POST   /api/adaptation/:deptId/candidates --> stem-doc-manager/handlers.CreateAdaptationCandidate (7 handlers)
+[GIN-debug] GET    /api/adaptation/candidates/:id --> stem-doc-manager/handlers.GetAdaptationCandidate (7 handlers)
+[GIN-debug] PUT    /api/adaptation/candidates/:id --> stem-doc-manager/handlers.UpdateAdaptationCandidate (7 handlers)
+[GIN-debug] POST   /api/adaptation/candidates/:id/criteria --> stem-doc-manager/handlers.AddAdaptationCriterion (7 handlers)
+[GIN-debug] PUT    /api/adaptation/candidates/:id/criteria/:cId --> stem-doc-manager/handlers.UpdateAdaptationCriterion (7 handlers)
+[GIN-debug] DELETE /api/adaptation/candidates/:id/criteria/:cId --> stem-doc-manager/handlers.DeleteAdaptationCriterion (7 handlers)
+[GIN-debug] POST   /api/adaptation/candidates/:id/promote --> stem-doc-manager/handlers.PromoteAdaptationCandidate (7 handlers)
+[GIN-debug] GET    /api/archive/failed       --> stem-doc-manager/handlers.GetArchiveFailed (7 handlers)
+[GIN-debug] GET    /api/archive/fired        --> stem-doc-manager/handlers.GetArchiveFired (7 handlers)
+[GIN-debug] POST   /api/archive/fired        --> stem-doc-manager/handlers.CreateFiredEmployee (7 handlers)
+[GIN-debug] GET    /api/archive/fired/:id    --> stem-doc-manager/handlers.GetFiredEmployee (7 handlers)
+2026/06/17 14:06:28 [server] Запуск на порту :8080
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080
+2026/06/17 14:06:40 [http] ::1 GET /api/archive/fired/6a323264baea16562a4df70c 200 4.5666ms
+[GIN] 2026/06/17 - 14:06:40 | 200 |      4.5666ms |             ::1 | GET      "/api/archive/fired/6a323264baea16562a4df70c"
+2026/06/17 14:06:40 [http] ::1 GET /api/departments 200 12.3108ms
+[GIN] 2026/06/17 - 14:06:40 | 200 |     12.3108ms |             ::1 | GET      "/api/departments"
+2026/06/17 14:06:40 [http] ::1 GET /api/archive/fired/6a323264baea16562a4df70c 200 3.8267ms
+[GIN] 2026/06/17 - 14:06:40 | 200 |      3.8267ms |             ::1 | GET      "/api/archive/fired/6a323264baea16562a4df70c"
+2026/06/17 14:06:40 [http] ::1 GET /api/departments 200 8.233ms
+[GIN] 2026/06/17 - 14:06:40 | 200 |       8.233ms |             ::1 | GET      "/api/departments"
+2026/06/17 14:06:47 [http] ::1 GET /api/archive/failed 200 1.3854ms
+[GIN] 2026/06/17 - 14:06:47 | 200 |      2.5953ms |             ::1 | GET      "/api/archive/failed"
+2026/06/17 14:06:47 [http] ::1 GET /api/archive/failed 200 942.9µs
+[GIN] 2026/06/17 - 14:06:47 | 200 |       942.9µs |             ::1 | GET      "/api/archive/failed"
+2026/06/17 14:06:47 [http] ::1 GET /api/departments 200 9.2616ms
+[GIN] 2026/06/17 - 14:06:47 | 200 |      9.2616ms |             ::1 | GET      "/api/departments"
+2026/06/17 14:06:47 [http] ::1 GET /api/departments 200 7.2416ms
+[GIN] 2026/06/17 - 14:06:47 | 200 |       7.747ms |             ::1 | GET      "/api/departments"
+2026/06/17 14:06:48 [http] ::1 GET /api/archive/fired 200 4.7394ms
+[GIN] 2026/06/17 - 14:06:48 | 200 |      6.4538ms |             ::1 | GET      "/api/archive/fired"
+2026/06/17 14:06:48 [http] ::1 GET /api/archive/fired/6a324e0b2a3a58d525eaf0e5 200 3.6301ms
+[GIN] 2026/06/17 - 14:06:48 | 200 |      5.1459ms |             ::1 | GET      "/api/archive/fired/6a324e0b2a3a58d525eaf0e5"
+2026/06/17 14:06:49 [http] ::1 GET /api/archive/fired/6a324e0b2a3a58d525eaf0e5 200 1.1203ms
+[GIN] 2026/06/17 - 14:06:49 | 200 |      3.1092ms |             ::1 | GET      "/api/archive/fired/6a324e0b2a3a58d525eaf0e5"
+2026/06/17 14:06:49 [http] ::1 GET /api/departments 200 11.4227ms
+[GIN] 2026/06/17 - 14:06:49 | 200 |     11.9353ms |             ::1 | GET      "/api/departments"
+2026/06/17 14:06:49 [http] ::1 GET /api/departments 429 0s
+[GIN] 2026/06/17 - 14:06:49 | 429 |            0s |             ::1 | GET      "/api/departments"
+[GIN] 2026/06/17 - 14:06:49 | 304 |         504µs |             ::1 | GET      "/uploads/avatars/6a291d036e351d376546ff95/1781681648_avatar.jpg"
